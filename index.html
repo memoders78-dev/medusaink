@@ -92,8 +92,8 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
 .ac h3{font-size:2rem}.ac small{color:var(--r);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:8px}
 .ac p{color:var(--mut);font-size:.95rem;margin:0 0 14px}
 .ac button{background:var(--g);color:#06100b;border:0;border-radius:999px;padding:9px 22px;font:700 .95rem Georgia,serif;cursor:pointer}
-.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;margin:22px 0 10px;-webkit-overflow-scrolling:touch}
-.tabs .chip{white-space:nowrap;font-size:1rem}
+.tabs{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:4px 2px 10px;margin:22px 0 10px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;max-width:100%}
+.tabs .chip{flex:0 0 auto;white-space:nowrap;font-size:1rem}
 /* Mobil uyumluluk */
 @media(max-width:700px){section,header,footer{min-width:0;max-width:100%}.mg,.mr,.mn,.mp{min-width:0;overflow-wrap:anywhere}header{align-items:center;padding:12px 5vw;position:sticky}.menu-toggle{display:inline-flex;align-items:center;justify-content:center;margin-left:auto}header nav{display:none;flex-direction:column;align-items:stretch;gap:0;width:100%;overflow:visible;padding:8px 0 4px;border-top:1px solid var(--bd)}header.nav-open nav{display:flex}nav a{margin:0;white-space:normal;font-size:.85rem;padding:10px 4px;border-bottom:1px solid var(--bd)}nav a:last-child{border-bottom:0}.hero{padding-top:42px}section{padding:58px 5vw}.mgs{grid-template-columns:1fr}.mk img{height:300px}.wa{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -105,6 +105,7 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
 .mh span,.mp b{min-width:74px;text-align:right}
 .mr{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px dashed var(--bd);transition:padding .2s}
 .mr:last-child{border-bottom:0}.mr:hover{padding-left:8px;color:var(--y)}
+.mn{flex:1 1 auto;min-width:0}.mp{flex:0 0 auto;max-width:45%;overflow-x:auto}
 .mn small{display:block;color:var(--mut);font-size:.8rem;font-style:italic;line-height:1.3}
 .mp{display:flex;white-space:nowrap}.mp b{color:var(--y);font-weight:700}.mp b:after{content:" ₺"}
 .av{width:170px;height:170px}.av img{object-position:center 25%}
