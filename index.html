@@ -65,6 +65,8 @@ section{padding:80px 5vw;max-width:1150px;margin:auto}
 .st{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:18px}
 .st b{font-family:var(--h);font-size:3rem;color:var(--r);line-height:1}
 form{display:grid;gap:12px;max-width:580px;margin-top:24px}
+.date-time{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.date-time{grid-template-columns:1fr 1fr;gap:8px}.date-time input{padding:10px 8px;font-size:16px}}
 label{font-size:.9rem;color:var(--mut)}
 input,select,textarea{width:100%;padding:12px;border:1.5px solid var(--bd);border-radius:10px;background:var(--surf);color:var(--tx);font:inherit}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--g)}
@@ -210,7 +212,7 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
 <p style="color:var(--mut)">Formu doldur; randevu talebin kaydedilsin ve WhatsApp üzerinden bize ulaşsın.</p>
 <form id="f">
 <div><label for="n">Ad Soyad</label><input id="n" required></div>
-<div><label for="p">Telefon</label><input id="p" type="tel" required></div>
+<div><label for="p">Telefon</label><input id="p" type="tel" inputmode="tel" autocomplete="tel" placeholder="+90 5XX XXX XX XX" aria-describedby="phoneHint" required><small id="phoneHint" style="color:var(--mut)">Türkiye numarası otomatik olarak +90 ile kaydedilir.</small></div>
 <div><label for="t">Hizmet</label><select id="t"><option>Dövme</option><option>Piercing</option><option>Danışma / Çizim görüşmesi</option><option>Kafe masa rezervasyonu</option></select></div>
 <div>
 
@@ -227,8 +229,7 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
   </select>
 
 </div><div><label for="s">Stil</label><select id="s"><option>Henüz karar vermedim</option><option>Fine line</option><option>Old school</option><option>Blackwork</option><option>Dotwork</option></select></div>
-<div><label for="d">Tercih edilen tarih</label><input id="d" type="date" required></div>
-<div><label for="tm">Tercih edilen saat</label><input id="tm" type="time" required></div>
+<div class="date-time"><div><label for="d">Randevu tarihi</label><input id="d" type="date" required></div><div><label for="tm">Randevu saati</label><input id="tm" type="time" required></div></div>
 <div><label for="m">Notun</label><textarea id="m" rows="3" placeholder="Dövme fikrin, vücut bölgesi, boyut..."></textarea></div>
 <div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:flex-start"><input id="consent" type="checkbox" required style="width:auto;margin-top:4px">Randevu talebimin kaydedilmesine ve talebim hakkında benimle iletişime geçilmesine onay veriyorum.</label></div>
 <button class="btn" id="submitAppointment" type="submit">Talebi Gönder</button>
@@ -319,15 +320,48 @@ var menuToggle=$("menuToggle"), siteNav=$("siteNav"), siteHeader=document.queryS
 menuToggle.addEventListener("click",function(){var opened=siteHeader.classList.toggle("nav-open");menuToggle.setAttribute("aria-expanded",String(opened));menuToggle.setAttribute("aria-label",opened?"Menüyü kapat":"Menüyü aç");menuToggle.textContent=opened?"✕":"☰";});
 siteNav.querySelectorAll("a").forEach(function(link){link.addEventListener("click",function(){siteHeader.classList.remove("nav-open");menuToggle.setAttribute("aria-expanded","false");menuToggle.setAttribute("aria-label","Menüyü aç");menuToggle.textContent="☰";});});
 $("wa").href="https://wa.me/"+PHONE+"?text="+encodeURIComponent("Merhaba Medusa İnk!");
-var today=new Date();today.setMinutes(today.getMinutes()-today.getTimezoneOffset());$("d").min=today.toISOString().slice(0,10);
+var today=new Date();
+today.setMinutes(today.getMinutes()-today.getTimezoneOffset());
+var todayString=today.toISOString().slice(0,10);
+var currentYear=today.getFullYear();
+$("d").min=todayString;
+$("d").max=currentYear+"-12-31";
+
+// Telefon alaninda +90 formatini goster; Supabase'e 90 ile baslayan rakamlar kaydet.
+function normalizeTurkishPhone(value){
+  var digits=String(value||"").replace(/\D/g,"");
+  if(digits.startsWith("0090")) digits=digits.slice(2);
+  if(digits.startsWith("90")) return digits;
+  if(digits.startsWith("0")) digits=digits.slice(1);
+  if(digits.length===10 && digits.startsWith("5")) return "90"+digits;
+  return digits;
+}
+$("p").addEventListener("blur",function(){
+  var normalized=normalizeTurkishPhone(this.value);
+  if(normalized.startsWith("90") && normalized.length===12){
+    this.value="+90 "+normalized.slice(2,5)+" "+normalized.slice(5,8)+" "+normalized.slice(8,10)+" "+normalized.slice(10,12);
+  }
+});
 $("f").addEventListener("submit",async function(e){
 e.preventDefault();
 var v=function(i){return $(i).value};
+var normalizedPhone=normalizeTurkishPhone(v("p"));
+if(!/^905\d{9}$/.test(normalizedPhone)){
+  alert("Lütfen +90 ile başlayan geçerli bir Türkiye cep telefonu numarası gir. Örnek: +90 5XX XXX XX XX");
+  $("p").focus();
+  return;
+}
+var selectedYear=Number(v("d").slice(0,4));
+if(selectedYear!==currentYear || v("d")<todayString){
+  alert("Lütfen içinde bulunduğumuz yıl için bugünden sonraki bir tarih seç.");
+  $("d").focus();
+  return;
+}
 var button=$("submitAppointment");
 button.disabled=true;button.textContent="Talebin kaydediliyor...";
 var appointment={
   customer_name:v("n").trim(),
-  phone:v("p").trim(),
+  phone:normalizeTurkishPhone(v("p")),
   service:v("t"),
   artist:v("a"),
   style:v("s"),
