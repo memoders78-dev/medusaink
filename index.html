@@ -207,7 +207,7 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
 
 <section id="randevu" class="rv">
 <h2>Randevu <em>Al</em></h2>
-<p style="color:var(--mut)">Formu doldur, talebin WhatsApp mesajı olarak bize ulaşsın.</p>
+<p style="color:var(--mut)">Formu doldur; randevu talebin kaydedilsin ve WhatsApp üzerinden bize ulaşsın.</p>
 <form id="f">
 <div><label for="n">Ad Soyad</label><input id="n" required></div>
 <div><label for="p">Telefon</label><input id="p" type="tel" required></div>
@@ -228,8 +228,10 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
 
 </div><div><label for="s">Stil</label><select id="s"><option>Henüz karar vermedim</option><option>Fine line</option><option>Old school</option><option>Blackwork</option><option>Dotwork</option></select></div>
 <div><label for="d">Tercih edilen tarih</label><input id="d" type="date" required></div>
+<div><label for="tm">Tercih edilen saat</label><input id="tm" type="time" required></div>
 <div><label for="m">Notun</label><textarea id="m" rows="3" placeholder="Dövme fikrin, vücut bölgesi, boyut..."></textarea></div>
-<button class="btn" type="submit">Talebi Gönder</button>
+<div style="grid-column:1/-1"><label style="display:flex;gap:10px;align-items:flex-start"><input id="consent" type="checkbox" required style="width:auto;margin-top:4px">Randevu talebimin kaydedilmesine ve talebim hakkında benimle iletişime geçilmesine onay veriyorum.</label></div>
+<button class="btn" id="submitAppointment" type="submit">Talebi Gönder</button>
 </form>
 <div id="ok"><b>Talebin hazır!</b> WhatsApp açılmazsa butona dokun.<br><a id="wa2" class="btn" target="_blank" rel="noopener" href="#">WhatsApp ile Gönder</a></div>
 </section>
@@ -248,10 +250,16 @@ footer{text-align:center;color:var(--mut);padding:36px 5vw;border-top:1px solid 
 <footer>© 2026 Medusa İnk · Dövme &amp; Kahve</footer>
 <a class="wa" id="wa" href="#" target="_blank" rel="noopener">WhatsApp</a>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// Supabase bağlantısı: Publishable key tarayıcıda kullanılabilir; secret/service_role key kullanmayın.
+var SUPABASE_URL="https://nwgvnrdcscaosobzyeoi.supabase.co";
+var SUPABASE_PUBLISHABLE_KEY="sb_publishable_A4XezYH8T4LY5HjtfIjyTA_dJ2Njbk8";
+var supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
 // WhatsApp numaralarını ülke koduyla, + işareti olmadan yazın.
 // Ahmet ve Ufuk numaraları iletişim bölümündeki sıraya göre eşleştirildi.
-var PHONE="905000000000";
+var PHONE="905467423577";
 var ARTIST_PHONES={
   "Ahmet Güneş":"905467423577",
   "Ufuk Kozan":"905346416261"
@@ -312,12 +320,45 @@ menuToggle.addEventListener("click",function(){var opened=siteHeader.classList.t
 siteNav.querySelectorAll("a").forEach(function(link){link.addEventListener("click",function(){siteHeader.classList.remove("nav-open");menuToggle.setAttribute("aria-expanded","false");menuToggle.setAttribute("aria-label","Menüyü aç");menuToggle.textContent="☰";});});
 $("wa").href="https://wa.me/"+PHONE+"?text="+encodeURIComponent("Merhaba Medusa İnk!");
 var today=new Date();today.setMinutes(today.getMinutes()-today.getTimezoneOffset());$("d").min=today.toISOString().slice(0,10);
-$("f").addEventListener("submit",function(e){
+$("f").addEventListener("submit",async function(e){
 e.preventDefault();
 var v=function(i){return $(i).value};
-var t="Merhaba "+v("n")+"! Medusa İnk üzerinden randevu talebi:\nAd: "+v("n")+"\nTelefon: "+v("p")+"\nHizmet: "+v("t")+"\nSanatçı: "+v("a")+"\nStil: "+v("s")+"\nTarih: "+v("d")+"\nNot: "+v("m");
-var u="https://wa.me/"+randevuPhone(v("a"))+"?text="+encodeURIComponent(t);
-$("wa2").href=u;$("ok").style.display="block";window.open(u,"_blank");
+var button=$("submitAppointment");
+button.disabled=true;button.textContent="Talebin kaydediliyor...";
+var appointment={
+  customer_name:v("n").trim(),
+  phone:v("p").trim(),
+  service:v("t"),
+  artist:v("a"),
+  style:v("s"),
+  appointment_date:v("d"),
+  appointment_time:v("tm"),
+  note:v("m").trim()||null,
+  consent:$("consent").checked,
+  status:"pending"
+};
+try{
+  var result=await supabaseClient.from("appointments").insert([appointment]);
+  if(result.error)throw result.error;
+  var message="Merhaba Medusa İnk! Web sitenizden yeni bir randevu talebi oluşturdum.\nAd: "+appointment.customer_name+"\nTelefon: "+appointment.phone+"\nHizmet: "+appointment.service+"\nSanatçı: "+appointment.artist+"\nStil: "+appointment.style+"\nTarih: "+appointment.appointment_date+"\nSaat: "+appointment.appointment_time+"\nNot: "+(appointment.note||"Yok");
+  var phone=ARTIST_PHONES[appointment.artist];
+  if(phone){
+    var url="https://wa.me/"+phone+"?text="+encodeURIComponent(message);
+    $("wa2").href=url;
+    $("ok").innerHTML='<b>Randevu talebin kaydedildi!</b> Şimdi WhatsApp üzerinden de iletebilirsin.<br><a id="wa2" class="btn" target="_blank" rel="noopener" href="'+url+'">WhatsApp ile Gönder</a>';
+    $("ok").style.display="block";
+  }else{
+    $("ok").innerHTML='<b>Randevu talebin başarıyla kaydedildi!</b><br>Seçtiğin sanatçı için WhatsApp numarası henüz tanımlanmadı. Stüdyo seninle iletişime geçebilmesi için talebin kaydedildi.';
+    $("ok").style.display="block";
+  }
+  $("f").reset();
+  sanatciFiltrele();
+}catch(err){
+  console.error("Randevu kaydedilemedi:",err);
+  alert("Randevu kaydedilemedi. Lütfen internet bağlantını kontrol edip tekrar dene. Sorun sürerse stüdyoyla WhatsApp üzerinden iletişime geç.");
+}finally{
+  button.disabled=false;button.textContent="Talebi Gönder";
+}
 });
 document.querySelectorAll(".ac button").forEach(function(b){b.addEventListener("click",function(){var hizmet=b.dataset.a==="Aslı"?"Piercing":"Dövme";$("t").value=hizmet;sanatciFiltrele();$("a").value=b.dataset.a;document.getElementById("randevu").scrollIntoView({behavior:"smooth"})})});
 var MENU={"☕ Kahveler": [["Sıcak Kahveler", "", ["Latte|180", "Americano|155", "Cappuccino|160", "Mocha|230", "White Chocolate Mocha|230", "Caramel Mocha|230", "Single Espresso|105", "Double Espresso|165", "Espresso Macchiato|185", "Coffee Macchiato|240", "Türk Kahvesi Fincan|70", "Türk Kahvesi Süvari|95", "Damla Sakızlı Türk Kahvesi|95", "Dibek Kahvesi|95", "Filtre Kahve|180", "Nescafe|175"]], ["Soğuk Kahveler", "", ["Ice Americano|120", "Ice Latte|130", "Ice Cappuccino|130", "Ice Mocha|140", "Ice White Chocolate Mocha|140", "Ice Caramel Mocha|140", "Ice Macchiato|150", "Frappe|230|Çilek, Çikolata, Karamel, Vanilya", "Cold Brew|130", "Affogato|175"]]], "🍵 Sıcak İçecekler": [["Çaylar &amp; Sıcaklar", "", ["Çay|55", "Ada Çayı|120", "Ihlamur Çayı|120", "Papatya Çayı|120", "Nane Limon Çayı|120", "Kış Çayı|120", "Yeşil Çay|120", "Limon Zencefil|120", "Elma Çayı|100", "Karadut Çayı|100", "Nar Çayı|100", "Sahlep|160", "Damla Sakızlı Sahlep|170", "Sıcak Çikolata|160", "Beyaz Sıcak Çikolata|160"]]], "🥤 Soğuk İçecekler": [["Milkshake", "", ["Çikolata|230", "Çilek|230", "Vanilya|230", "Muz|230", "Böğürtlen|230", "Special Mix|245"]], ["Smoothies", "", ["Çilek|230", "Muz|230", "Mango|230", "Special Mix|245"]], ["Frozens", "", ["Çilek|225", "Nane-Limon|225", "Muz|225", "Orman Meyve|225", "Böğürtlen|225", "Karadut|225", "Special Mix|245"]], ["Vitaminler", "", ["Portakal Suyu|200", "Atom|250", "Muzlu Süt|230", "Limonata|220|Karpuz, Nane, Çarkıfelek, Çilek, Mango, Nar", "Churchill|100"]], ["Soft İçecekler", "", ["Büyük Su|65", "Küçük Su|35", "Soda|70", "Meyveli Soda|80", "Cola|110", "Cola Zero|110", "Sprite|110", "Fanta|110", "Ice Tea|110|Mango, Şeftali, Karpuz, Çilek, Limon", "Redbull|160|Klasik, Şekersiz, Hindistan Cevizli, Yaban Mersinli"]], ["Alkolsüz Kokteyller", "", ["Cucumber Cooler|350", "Pina Colada|350", "Tropikal Sunrise|350", "Berry Blast|350", "Hibiskus|350", "İtalyan Soda|350"]]], "🍰 Tatlı &amp; Atıştırmalık": [["Pastalar", "", ["San Sebastian|250", "Frambuaz Cheesecake|250", "Limon Cheesecake|250", "Çikolatalı Pasta|250", "Trileçe|250", "Lotus|250", "Orman Meyveli Pasta|250"]], ["Dondurmalar", "", ["Çilek|70", "Çikolata|70", "Vanilya|70", "Karamel|70", "Orman Meyve|70", "Antep Fıstığı|70", "Muz|70", "Limon|70", "Special Mix|250|4 top"]], ["Aperitifler", "", ["Peynir Tabağı|350", "Combo Tabağı|350", "Patates Tabağı|150", "Meyve Tabağı|300", "Çerez|180", "Söğüş|100|Havuç, Salatalık"]], ["Protein Bar", "", ["Fit Power|190", "Espresso Fit Power|200", "Choco Fit|190", "Detox Fit|200"]]], "🍸 Bar": [["Alkollü Kokteyller", "", ["Negroni|600", "Long Island Ice Tea|650", "Margarita|630", "Dry Martini|550", "Cosmopolitan|550", "Espresso Martini|580", "Mojito|600", "Kuzu Kulağı|650", "Strawberry Daiquiri|610", "Blue Lagoon|650", "Tequila Sunrise|650", "Rasppine Mint|650", "Basil Spicy|650", "Whisky Sour|570", "Hot Chili Pepper|650", "Aperol Spritz|550", "Cucumint|570", "Velvet Monsoon|650", "Golden Medusa|650"]], ["Beyaz Şarap", "Kadeh/Şişe", ["Sarafin Chardonnay|600/2.800", "Kayra Vintage Chardonnay|550/2.600", "Kavaklıdere Selection Narince|550/2.600"]], ["Rosé Şarap", "Kadeh/Şişe", ["Sarafin Cabernet Franc|550/2.750", "Kayra Vintage Rosé|450/2.650", "Leona Blush|400/2.500"]], ["Kırmızı Şarap", "Kadeh/Şişe", ["DLC Cabernet Sauvignon|600/2.700", "Sarafin Shiraz|550/2.650", "Antioche Classic|400/2.250"]], ["Viski", "Tek/Duble", ["Chivas|350/450", "Black Label|450/550", "Jack Daniels|350/450"]], ["Cin", "Tek/Duble", ["Gordon’s|450/550", "Beefeater|400/500", "Cin Tonik|500"]], ["Votka", "Tek/Duble", ["Smirnoff|400/500", "Absolut|450/550"]], ["Bira", "", ["Blanc|260", "Heineken|260", "Bomonti Filtresiz|250", "Carlsberg|250", "Mexican|280"]]]};
